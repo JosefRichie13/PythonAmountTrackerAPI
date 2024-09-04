@@ -303,7 +303,7 @@ def getAmountExpenses(response: Response, amountID: str, exportType: str):
     noOfExpensesCheck = cur.execute(queryToGetAmtDetails, valuesToGetAmtDetails).fetchall()
 
     # Check if the amount is present in the DB
-    if len(noOfExpensesCheck) == 0:
+    if len(totalValueCheck) == 0:
         response.status_code = status.HTTP_404_NOT_FOUND
         return {"status": "No Amount with the ID " + amountID + " exists. Please recheck"}
     
