@@ -53,7 +53,7 @@ def addAnAmount(addAnAmountBody: addAnAmount, response: Response):
 
 
 # POST Body to add an expense
-# The amount is validated to be greater than 0
+# The expense is validated to be greater than 0
 class addAnExpense(BaseModel):
     amountID : str
     expenseDescription : str
@@ -183,3 +183,67 @@ def updateAnAmount(updateAnAmountBody: updateAnAmount, response: Response):
     cur.execute(queryToUpdateAnAmount, valuesToUpdateAnAmount)
     connection.commit()
     return {"amountID" : updateAnAmountBody.amountID, "status" : "Amount updated."}
+
+
+# PUT Body to update an expense
+# The expense is validated to be greater than 0
+class updateAnExpense(BaseModel):
+    expenseID : str
+    expenseDescription : str
+    expense : float = Field(gt=0, description = "Expense must be greater than 0")
+
+# Update an expense endpoint
+@app.put("/updateAnExpense")
+def updateAnExpense(updateAnExpenseBody: updateAnExpense, response: Response):
+
+    # Sanitzes the description 
+    sanitizedDescription = sanitizeString(updateAnExpenseBody.expenseDescription).strip()
+
+
+    # Checks the expense description, if its empty returns a 400
+    if len(sanitizedDescription) == 0:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"status" : "Expense description cannot be empty."}
+
+    
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # Checks if the supplied expense ID exists in the DB.
+    # If there is no expense ID by that ID, it will return NONE, we return with 404
+    queryToCheckExpenseID = "SELECT ID, AMT_ID FROM AMOUNTTRACKER WHERE ID = ? AND TYPE = 'EXP'"
+    valuesToCheckExpenseID = [updateAnExpenseBody.expenseID]
+    amountIDCheck = cur.execute(queryToCheckExpenseID, valuesToCheckExpenseID).fetchone()
+    if amountIDCheck is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Expense with the ID " + updateAnExpenseBody.expenseID + " exists. Please recheck"}
+    
+
+    # Checks the current amount usage and if its less than the value to be updated
+    # We get all the values by the amount ID excluding the value of the expense to be updated and add it into summedUpAmount
+    # Then we get the amount and put it into currentAmountCheck
+
+    # If the summedUpAmount + supplied expense is greater than the amount value, reject with 403
+    # As we cannot update the expense to more than the expense
+    queryToCheckAmountUsage = "SELECT VALUE FROM AMOUNTTRACKER WHERE AMT_ID = ? AND ID IS NOT ?"
+    valuesToCheckAmountUsage = [amountIDCheck[1], updateAnExpenseBody.expenseID]
+    currentAmountUsageCheck = cur.execute(queryToCheckAmountUsage, valuesToCheckAmountUsage).fetchall()
+    extractedNumbers = [number[0] for number in currentAmountUsageCheck]
+    summedUpAmount = sum(extractedNumbers)
+
+    queryToCheckCurrentAmount = "SELECT VALUE FROM AMOUNTTRACKER WHERE ID = ?"
+    valuesToCheckCurrentAmount = [amountIDCheck[1]]
+    currentAmountCheck = cur.execute(queryToCheckCurrentAmount, valuesToCheckCurrentAmount).fetchone()
+
+    if summedUpAmount + updateAnExpenseBody.expense > currentAmountCheck[0]:
+        response.status_code = status.HTTP_403_FORBIDDEN
+        return {"status": "Can only update expense to " + str(currentAmountCheck[0] - summedUpAmount)}
+
+
+    # Updates the expense description and value into the DB for the supplied expense ID
+    queryToUpdateAnExpense = "UPDATE AMOUNTTRACKER SET AMT_EXP_DESC = ?, VALUE = ? WHERE ID = ?"
+    valuesToUpdateAnExpense = (sanitizedDescription, updateAnExpenseBody.expense, updateAnExpenseBody.expenseID)
+    cur.execute(queryToUpdateAnExpense, valuesToUpdateAnExpense)
+    connection.commit()
+    return {"amountID" : updateAnExpenseBody.expenseID, "status" : "Expense updated."}
