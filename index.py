@@ -1,5 +1,5 @@
 import sqlite3
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, Response, status, Query
 from pydantic import BaseModel, Field
 from helpers import *
 
@@ -247,3 +247,81 @@ def updateAnExpense(updateAnExpenseBody: updateAnExpense, response: Response):
     cur.execute(queryToUpdateAnExpense, valuesToUpdateAnExpense)
     connection.commit()
     return {"amountID" : updateAnExpenseBody.expenseID, "status" : "Expense updated."}
+
+
+
+# Gets the details of an Amount
+# Requires amountID to be sent as a Query param
+@app.get("/getAmountDetails")
+def getAmountDetails(response: Response, amountID: str):
+
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # We query 2 times using the supplied amountID
+    # queryToGetAmtDetails queries the ID, Description, Value of the Amount
+    # queryToGetAmtExpenses queries the no of expenses of the Amount
+    queryToGetAmtDetails = "SELECT ID, AMT_EXP_DESC, VALUE FROM AMOUNTTRACKER WHERE ID = ? AND TYPE = 'AMT'"
+    queryToGetAmtExpenses = "SELECT COUNT(ID) FROM AMOUNTTRACKER WHERE AMT_ID = ?"
+    valuesToGetAmtDetails = [amountID]
+    amtCheck = cur.execute(queryToGetAmtDetails, valuesToGetAmtDetails).fetchone()
+    noOfExpensesCheck = cur.execute(queryToGetAmtExpenses, valuesToGetAmtDetails).fetchone()
+    
+    # Check if the amount is present in the DB
+    if amtCheck is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Amount with the ID " + amountID + " exists. Please recheck"}
+        
+    # Return the ID, Description Value, no of expenses
+    return {"amountID": amtCheck[0], "amountDescription": amtCheck[1], "amountValue": amtCheck[2], "noOfExpenses": noOfExpensesCheck[0]}
+
+
+
+# Gets all the expense details of an Amount
+# Requires amountID and exportType to be sent as a Query param
+@app.get("/getAmountExpenses")
+def getAmountExpenses(response: Response, amountID: str, exportType: str):
+
+    # Export type should be either JSON or HTML
+    # Failing that, its rejected with 403
+    if exportType != "json" and exportType != "html":
+        response.status_code = status.HTTP_403_FORBIDDEN
+        return {"status" : "exportType should be json or html"}
+
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # We query 2 times using the supplied amountID
+    # queryToGetTotalDetails queries the Value of the Amount
+    # queryToGetAmtDetails queries the ID, Description, value of the expenses
+    queryToGetTotalDetails = "SELECT VALUE FROM AMOUNTTRACKER WHERE ID = ?"
+    valuesToGetAmtDetails = [amountID]
+    totalValueCheck = cur.execute(queryToGetTotalDetails, valuesToGetAmtDetails).fetchone()
+    queryToGetAmtDetails = "SELECT ID, AMT_EXP_DESC, VALUE FROM AMOUNTTRACKER WHERE AMT_ID = ? "
+    noOfExpensesCheck = cur.execute(queryToGetAmtDetails, valuesToGetAmtDetails).fetchall()
+
+    # Check if the amount is present in the DB
+    if len(noOfExpensesCheck) == 0:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Amount with the ID " + amountID + " exists. Please recheck"}
+    
+    # Add the values of the expenses
+    extractedNumbers = [number[2] for number in noOfExpensesCheck]
+    summedUpAmount = sum(extractedNumbers)
+
+    # Subract from the total amount to get the remaining amount
+    remainingAmount = totalValueCheck[0] - summedUpAmount
+
+    # Loop through the expenses and append to a list
+    formattedExpenses = []
+    for ID, AMT_EXP_DESC, VALUE in noOfExpensesCheck:
+        formattedExpenses.append({"expenseID": ID, "expenseDescription": AMT_EXP_DESC, "expenseValue": VALUE})
+
+    # If the exportType is JSON, return JSON response
+    # Else if its HTML, return the HTML page
+    if exportType == "json":
+        return {"amountID" : amountID, "totalExpenses" : summedUpAmount, "remainingAmount" : remainingAmount, "expenseDetails" : formattedExpenses }
+    elif exportType == "html":
+        return {"HTML is being bulit"}
