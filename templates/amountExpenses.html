@@ -5,8 +5,8 @@
   </script>
   <style>
     #doghnut-chart {
-      width: 600px;
-      height: 500px;
+      width: 50%;
+      height: 50%;
       margin: 0 auto;
       padding: 20px;
     }
@@ -61,7 +61,7 @@
 
 
       new Chart(document.getElementById("doghnut-chart"), {
-        type: 'doughnut',
+        type: '{{chartType}}',
         data: {
           labels: labels,
           datasets: [{ label: "Amount Expenses", backgroundColor: colors, data: values }]

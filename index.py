@@ -321,10 +321,14 @@ def getAmountExpenses(response: Response, amountID: str):
 
 
 
-# Gets all the expense details of an Amount as a Donutchart
-# Requires amountID to be sent as a Query param
+# Gets all the expense details of an Amount as a chart
+# Requires amountID and chartType to be sent as a Query param
 @app.get("/getAmountExpensesChart")
-def getAmountExpenses(amountID: str, request: Request, response: Response, response_class = HTMLResponse):
+def getAmountExpenses(amountID: str, chartType : str, request: Request, response: Response):
+
+    if chartType != "pie" and chartType != "bar" and chartType != "doughnut" and chartType != "line" and chartType != "polarArea" and chartType != "radar":
+        response.status_code = status.HTTP_403_FORBIDDEN
+        return {"status" : "Supported chart types are pie, bar, doughnut, line, polarArea and radar"}
 
     # Connects to the DB
     connection = sqlite3.connect("AMOUNTTRACKER.db")
@@ -340,4 +344,4 @@ def getAmountExpenses(amountID: str, request: Request, response: Response, respo
         return {"status": "No Amount with the ID " + amountID + " exists. Please recheck"}
 
     # Returns a HTML chart
-    return templates.TemplateResponse(request = request, name = "amountExpenses.html", context = {"amountID" : amtCheck[0], "amtDesc" : amtCheck[1]})
+    return templates.TemplateResponse(request = request, name = "amountExpenses.html", context = {"amountID" : amtCheck[0], "amtDesc" : amtCheck[1], "chartType": chartType})
