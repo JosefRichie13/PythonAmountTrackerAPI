@@ -1,0 +1,83 @@
+<html>
+
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  </script>
+  <style>
+    #doghnut-chart {
+      width: 600px;
+      height: 500px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    #noData {
+      font-family: Calibri;
+      font-size: 25px;
+      text-align: center;
+      padding: 10px;
+    }
+  </style>
+  <title>Expense Chart</title>
+</head>
+
+<body>
+  <canvas id="doghnut-chart"></canvas>
+  <script>
+
+    getData();
+
+    async function getData() {
+      const response = await fetch('http://127.0.0.1:8000/getAmountExpenses?amountID=' + '{{amountID}}');
+      const data = await response.json();
+      length = data.expenseDetails.length;
+
+      if (length == 0) {
+        document.getElementById('noData').innerHTML = "No Chart is displayed as there is no expense for the amount"
+      }
+
+      // Generate and return Random color hexes, like #6C2F26
+      function randomColorGenerator() {
+        const characters = '0123456789ABCDEF';
+        let generatedColor = '#';
+        for (index = 0; index < 6; index++) {
+          generatedColor += characters[Math.floor(Math.random() * 16)];
+        }
+        return generatedColor
+      }
+
+      // Depending on the length of the data, create an array of color hexes to be used in the chart
+      const colors = [];
+      for (index2 = 0; index2 < length; index2++) {
+        colors.push(randomColorGenerator());
+      }
+
+
+      labels = [];
+      values = [];
+      for (point = 0; point < length; point++) {
+        labels.push(data.expenseDetails[point].expenseDescription);
+        values.push(data.expenseDetails[point].expenseValue);
+      }
+
+
+      new Chart(document.getElementById("doghnut-chart"), {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{ label: "Amount Expenses", backgroundColor: colors, data: values }]
+        },
+        options: {
+          plugins: {
+            legend: { display: true, position: 'bottom' },
+            title: { display: true, text: 'Expense breakdown for ' + '{{amtDesc}}', font: { size: 25, family: 'Calibri' }, padding: { top: 10, bottom: 10 } },
+            subtitle: { display: true, text: ['The total amount is ' + data.totalAmount, 'The spent amount is ' + data.totalExpenses, 'The remaining amount is ' + data.remainingAmount], font: { size: 20, family: 'Calibri' }, padding: { top: 10, bottom: 10 } }
+          }
+        }
+      });
+    }
+
+  </script>
+    <p id="noData"> </p>
+</body>
+
+</html>

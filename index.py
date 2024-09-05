@@ -1,9 +1,12 @@
 import sqlite3
-from fastapi import FastAPI, Response, status, Query
+from fastapi import FastAPI, Response, status, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from helpers import *
+from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
+templates = Jinja2Templates(directory="templates")
 
 @app.get("/")
 def landingPage():
@@ -279,15 +282,9 @@ def getAmountDetails(response: Response, amountID: str):
 
 
 # Gets all the expense details of an Amount
-# Requires amountID and exportType to be sent as a Query param
+# Requires amountID to be sent as a Query param
 @app.get("/getAmountExpenses")
-def getAmountExpenses(response: Response, amountID: str, exportType: str):
-
-    # Export type should be either JSON or HTML
-    # Failing that, its rejected with 403
-    if exportType != "json" and exportType != "html":
-        response.status_code = status.HTTP_403_FORBIDDEN
-        return {"status" : "exportType should be json or html"}
+def getAmountExpenses(response: Response, amountID: str):
 
     # Connects to the DB
     connection = sqlite3.connect("AMOUNTTRACKER.db")
@@ -319,9 +316,28 @@ def getAmountExpenses(response: Response, amountID: str, exportType: str):
     for ID, AMT_EXP_DESC, VALUE in noOfExpensesCheck:
         formattedExpenses.append({"expenseID": ID, "expenseDescription": AMT_EXP_DESC, "expenseValue": VALUE})
 
-    # If the exportType is JSON, return JSON response
-    # Else if its HTML, return the HTML page
-    if exportType == "json":
-        return {"amountID" : amountID, "totalExpenses" : summedUpAmount, "remainingAmount" : remainingAmount, "expenseDetails" : formattedExpenses }
-    elif exportType == "html":
-        return {"HTML is being bulit"}
+    # Return JSON response
+    return {"amountID" : amountID, "totalAmount" : totalValueCheck[0], "totalExpenses" : summedUpAmount, "remainingAmount" : remainingAmount, "expenseDetails" : formattedExpenses }
+
+
+
+# Gets all the expense details of an Amount as a Donutchart
+# Requires amountID to be sent as a Query param
+@app.get("/getAmountExpensesChart")
+def getAmountExpenses(amountID: str, request: Request, response: Response, response_class = HTMLResponse):
+
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # Check if the amount is present in the DB
+    queryToGetAmtDetails = "SELECT ID, AMT_EXP_DESC FROM AMOUNTTRACKER WHERE ID = ? AND TYPE = 'AMT'"
+    valuesToGetAmtDetails = [amountID]
+    amtCheck = cur.execute(queryToGetAmtDetails, valuesToGetAmtDetails).fetchone()
+    
+    if amtCheck is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Amount with the ID " + amountID + " exists. Please recheck"}
+
+    # Returns a HTML chart
+    return templates.TemplateResponse(request = request, name = "amountExpenses.html", context = {"amountID" : amtCheck[0], "amtDesc" : amtCheck[1]})
