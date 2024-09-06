@@ -54,11 +54,12 @@
 
       labels = [];
       values = [];
-      for (point = 0; point < length; point++) {
-        labels.push(data.expenseDetails[point].expenseDescription);
-        values.push(data.expenseDetails[point].expenseValue);
-      }
+      dates = [];
 
+      for (point = 0; point < length; point++) {
+        labels.push(data.expenseDetails[point].expenseDescription + " (" + data.expenseDetails[point].expenseDate +")");
+        values.push(data.expenseDetails[point].expenseValue)
+        }
 
       new Chart(document.getElementById("doghnut-chart"), {
         type: '{{chartType}}',
