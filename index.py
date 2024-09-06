@@ -439,3 +439,53 @@ def getAmountExpenses(amountID: str, chartType : str, request: Request, response
 
     # Returns a HTML chart
     return templates.TemplateResponse(request = request, name = "amountExpenses.html", context = {"amountID" : amtCheck[0], "amtDesc" : amtCheck[1], "chartType": chartType})
+
+
+
+# Deletes an amount from the DB, when an amount is deleted all its expenses are also deleted
+# Requires amountID to be sent as a Query param
+@app.delete("/deleteAmount")
+def deleteAmount(amountID: str, response: Response):
+
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # Check if the amount is present in the DB
+    queryToCheckAmount = "SELECT * FROM AMOUNTTRACKER WHERE ID = ? AND TYPE = 'AMT'"
+    valuesToCheckAmount = [amountID]
+    amtCheck = cur.execute(queryToCheckAmount, valuesToCheckAmount).fetchone()
+    
+    if amtCheck is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Amount with the ID " + amountID + " exists. Please recheck"}
+    
+    queryToDeleteAmount = 'DELETE FROM AMOUNTTRACKER WHERE ID = ? OR AMT_ID = ?'
+    cur.execute(queryToDeleteAmount, [amountID, amountID])
+    connection.commit()
+    return {"status" : "Amount with the ID, " + amountID + " and all its expenses are deleted."}
+
+
+
+# Deletes an expense from the DB
+# Requires expenseID to be sent as a Query param
+@app.delete("/deleteExpense")
+def deleteAmount(expenseID: str, response: Response):
+
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # Check if the expense is present in the DB
+    queryToCheckExpense = "SELECT * FROM AMOUNTTRACKER WHERE ID = ? AND TYPE = 'EXP'"
+    valuesToCheckExpense = [expenseID]
+    expCheck = cur.execute(queryToCheckExpense, valuesToCheckExpense).fetchone()
+    
+    if expCheck is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Expense with the ID " + expenseID + " exists. Please recheck"}
+    
+    queryToDeleteExpense = 'DELETE FROM AMOUNTTRACKER WHERE ID = ? OR AMT_ID = ?'
+    cur.execute(queryToDeleteExpense, [expenseID, expenseID])
+    connection.commit()
+    return {"status" : "Expense with the ID, " + expenseID + " is deleted."}
