@@ -379,7 +379,7 @@ def getAmountExpenses(response: Response, amountID: str):
 # Gets all the expense details of an Amount as a chart
 # Requires amountID and chartType to be sent as a Query param
 @app.get("/getAmountExpensesChart")
-def getAmountExpenses(amountID: str, chartType: str, request: Request, response: Response):
+def getAmountExpensesChart(amountID: str, chartType: str, request: Request, response: Response):
 
     if chartType != "pie" and chartType != "bar" and chartType != "doughnut" and chartType != "line" and chartType != "polarArea" and chartType != "radar":
         response.status_code = status.HTTP_403_FORBIDDEN
@@ -430,7 +430,7 @@ def deleteAmount(amountID: str, response: Response):
 # Deletes an expense from the DB
 # Requires expenseID to be sent as a Query param
 @app.delete("/deleteExpense")
-def deleteAmount(expenseID: str, response: Response):
+def deleteExpense(expenseID: str, response: Response):
 
     # Connects to the DB
     connection = sqlite3.connect("AMOUNTTRACKER.db")
@@ -455,7 +455,7 @@ def deleteAmount(expenseID: str, response: Response):
 # Deletes all the expenses of an amount
 # Requires amountID to be sent as a Query param
 @app.delete("/deleteAmountExpenses")
-def deleteAmount(amountID: str, response: Response):
+def deleteAmountExpenses(amountID: str, response: Response):
 
     # Connects to the DB
     connection = sqlite3.connect("AMOUNTTRACKER.db")
