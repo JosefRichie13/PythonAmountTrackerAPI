@@ -489,3 +489,28 @@ def deleteAmount(expenseID: str, response: Response):
     cur.execute(queryToDeleteExpense, [expenseID, expenseID])
     connection.commit()
     return {"status" : "Expense with the ID, " + expenseID + " is deleted."}
+
+
+
+# Deletes all the expenses of an amount
+# Requires amountID to be sent as a Query param
+@app.delete("/deleteAmountExpenses")
+def deleteAmount(amountID: str, response: Response):
+
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # Check if the amount is present in the DB
+    queryToCheckAmount = "SELECT * FROM AMOUNTTRACKER WHERE ID = ? AND TYPE = 'AMT'"
+    valuesToCheckAmount = [amountID]
+    amtCheck = cur.execute(queryToCheckAmount, valuesToCheckAmount).fetchone()
+    
+    if amtCheck is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Amount with the ID " + amountID + " exists. Please recheck"}
+    
+    queryToDeleteAmountExpenses = 'DELETE FROM AMOUNTTRACKER WHERE AMT_ID = ?'
+    cur.execute(queryToDeleteAmountExpenses, [amountID])
+    connection.commit()
+    return {"status" : "All expenses for the Amount with the ID, " + amountID + " are deleted."}
