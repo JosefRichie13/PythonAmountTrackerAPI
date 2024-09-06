@@ -1,4 +1,4 @@
-# Backend for an Amount Tracking App using using FastAPI, SQLite and Python
+# Backend for an Amount Tracking App using FastAPI, SQLite and Python
 
 This repo has the code for an Amount Tracking App Backend. The basic functionality/flow of the app
 
