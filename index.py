@@ -262,7 +262,7 @@ def getAllAmountDetails(response: Response):
     cur = connection.cursor()
 
     # Query to get the ID, Description, Value of all the Amounts
-    queryToGetAmtDetails = "SELECT ID, AMT_EXP_DESC, VALUE FROM AMOUNTTRACKER WHERE TYPE = 'AMT'"
+    queryToGetAmtDetails = "SELECT ID, AMT_EXP_DESC, VALUE, DATE FROM AMOUNTTRACKER WHERE TYPE = 'AMT'"
     amtCheck = cur.execute(queryToGetAmtDetails).fetchall()
     
     # Check if the amount is present in the DB
@@ -274,11 +274,11 @@ def getAllAmountDetails(response: Response):
     # We query again to get the no of expenses for each amount 
     # Finally everything is appended to a list
     formattedAmount = []
-    for ID, AMT_EXP_DESC, VALUE in amtCheck:
+    for ID, AMT_EXP_DESC, VALUE, DATE in amtCheck:
         queryToGetCountOfExpenses = "SELECT COUNT(*) FROM AMOUNTTRACKER WHERE AMT_ID = ?"
         valuesToGetCountOfExpenses = [ID]
         countOfExpensesCheck = cur.execute(queryToGetCountOfExpenses, valuesToGetCountOfExpenses).fetchone()
-        formattedAmount.append({"amountID": ID, "amountDescription": AMT_EXP_DESC, "amountValue": VALUE, "noOfExpenses": countOfExpensesCheck[0]})
+        formattedAmount.append({"amountID": ID, "amountDescription": AMT_EXP_DESC, "amountValue": VALUE, "amountDate": convertEpochToDate(DATE), "noOfExpenses": countOfExpensesCheck[0]})
         
     # Return the ID, Description, Value and the number of expenses
     return {"amountDetails": formattedAmount}
@@ -299,7 +299,7 @@ def getAmountExpenses(response: Response, amountID: str):
     queryToGetTotalDetails = "SELECT VALUE FROM AMOUNTTRACKER WHERE ID = ?"
     valuesToGetAmtDetails = [amountID]
     totalValueCheck = cur.execute(queryToGetTotalDetails, valuesToGetAmtDetails).fetchone()
-    queryToGetAmtDetails = "SELECT ID, AMT_EXP_DESC, VALUE FROM AMOUNTTRACKER WHERE AMT_ID = ? "
+    queryToGetAmtDetails = "SELECT ID, AMT_EXP_DESC, VALUE, DATE FROM AMOUNTTRACKER WHERE AMT_ID = ? "
     noOfExpensesCheck = cur.execute(queryToGetAmtDetails, valuesToGetAmtDetails).fetchall()
 
     # Check if the amount is present in the DB
@@ -316,8 +316,8 @@ def getAmountExpenses(response: Response, amountID: str):
 
     # Loop through the expenses and append to a list
     formattedExpenses = []
-    for ID, AMT_EXP_DESC, VALUE in noOfExpensesCheck:
-        formattedExpenses.append({"expenseID": ID, "expenseDescription": AMT_EXP_DESC, "expenseValue": VALUE})
+    for ID, AMT_EXP_DESC, VALUE, DATE in noOfExpensesCheck:
+        formattedExpenses.append({"expenseID": ID, "expenseDescription": AMT_EXP_DESC, "expenseValue": VALUE, "expenseDate" : convertEpochToDate(DATE)})
 
     # Return JSON response
     return {"amountID" : amountID, "totalAmount" : totalValueCheck[0], "totalExpenses" : summedUpAmount, "remainingAmount" : remainingAmount, "expenseDetails" : formattedExpenses }
