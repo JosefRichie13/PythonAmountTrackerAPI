@@ -1,0 +1,38 @@
+<h1 id="backend-for-an-amount-tracking-app-using-using-fastapi-sqlite-and-python">Backend for an Amount Tracking App using using FastAPI, SQLite and Python</h1>
+<p>This repo has the code for an Amount Tracking App Backend. The basic functionality/flow of the app</p>
+<ul>
+<li>You create an amount</li>
+<li>You add expenses to the amount</li>
+<li>You can add expenses until the amount is reached <br><br></li>
+</ul>
+<p>The below REST API endpoints are exposed</p>
+<ul>
+<li><p>GET /getAllAmounts -- Returns all the available amounts</p>
+</li>
+<li><p>GET /getAmountExpenses -- Returns all the expense details of an amount</p>
+</li>
+<li><p>GET /getAmountExpensesChart -- Returns all the expense details of an amount as a Chart</p>
+</li>
+<li><p>POST /addAnAmount -- Adds an Amount</p>
+</li>
+<li><p>POST /addAnExpense -- Adds an expense to an amount</p>
+</li>
+<li><p>PUT /updateAnAmount -- Updates an amount</p>
+</li>
+<li><p>PUT //updateAnExpense -- Updates an expense </p>
+</li>
+<li><p>DELETE /deleteAmount -- Deletes an amount</p>
+</li>
+<li><p>DELETE /deleteExpense -- Deletes an expense</p>
+</li>
+<li><p>DELETE /deleteAmountExpenses -- Deletes all the expenses of an amount <br><br></p>
+</li>
+</ul>
+<p>The entire suite of endpoints with payloads are available in PythonAmountTracker.har file. Check the GitHub repo for it. <br><br></p>
+<p>To run it in Dev mode, use the FastAPI run command</p>
+<pre><code class="language-console">fastapi dev .\index.py
+</code></pre>
+<p>Once the app is started locally, the below URL&#39;s will be available </p>
+<pre><code>API Endpoint URL : http://127.0.0.1:8000 
+Generated API Docs URL : http://127.0.0.1:8000/docs
+</code></pre>

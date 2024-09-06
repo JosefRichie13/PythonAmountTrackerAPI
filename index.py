@@ -1,9 +1,10 @@
 import sqlite3
 from fastapi import FastAPI, Response, status, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from helpers import *
 from fastapi.templating import Jinja2Templates
+
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -11,7 +12,7 @@ templates = Jinja2Templates(directory="templates")
 
 @app.get("/")
 def landingPage():
-    return {"message": "Welcome to the Amount Tracker API, being built ..."}
+    return FileResponse("AmountTracker.html")
 
 
 # POST Body to add an amount
