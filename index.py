@@ -129,7 +129,7 @@ def addAnExpense(addAnExpenseBody: addAnExpense, response: Response):
     connection.commit()
     return {"expenseID" : generatedIDForExpense, "status" : "Expense of " + str(addAnExpenseBody.expense) + " added.", "amountID" : addAnExpenseBody.amountID}
 
-
+##############################################################
 
 # PUT Body to update an amount
 # The amount is validated to be greater than 0
@@ -137,6 +137,7 @@ class updateAnAmount(BaseModel):
     amountID : str
     amountDescription : str
     amount : float = Field(gt=0, description = "Amount must be greater than 0")
+    date : str 
 
 # Update an amount endpoint
 @app.put("/updateAnAmount")
@@ -145,11 +146,15 @@ def updateAnAmount(updateAnAmountBody: updateAnAmount, response: Response):
     # Sanitzes the description 
     sanitizedDescription = sanitizeString(updateAnAmountBody.amountDescription).strip()
 
-
     # Checks the amount description, if its empty returns a 400
     if len(sanitizedDescription) == 0:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"status" : "Amount description cannot be empty."}
+    
+    # Checks the date format, if its incorrect returns a 400
+    if checkDateFormat(updateAnAmountBody.date) == False:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"status" : updateAnAmountBody.date + " is not a valid date or is not in DD-MMM-YYYY format, e.g., 05-Aug-2024. Please correct the date."}    
 
     
     # Connects to the DB
@@ -180,12 +185,28 @@ def updateAnAmount(updateAnAmountBody: updateAnAmount, response: Response):
         return {"status": "Total expense for this amount is " + str(summedUpAmount) + ". Cannot update the amount to anything below."}
 
 
-    # Updates the amount description and value into the DB for the supplied amount ID
-    queryToUpdateAnAmount = "UPDATE AMOUNTTRACKER SET AMT_EXP_DESC = ?, VALUE = ? WHERE ID = ?"
-    valuesToUpdateAnAmount = (sanitizedDescription, updateAnAmountBody.amount, updateAnAmountBody.amountID)
+    # Check expenses date
+    queryToCheckExpensesDate = "SELECT DATE FROM AMOUNTTRACKER WHERE AMT_ID = ?"
+    checkExpenseDate = cur.execute(queryToCheckExpensesDate, valuesToCheckAmountUsage).fetchall()
+        
+    # Check if the supplied date, in Epoch, is less than all the expense dates
+    # As, the amount date must be less than or equal to the expense dates
+    # If the supplied date is less than or equal to all expense dates, return True, else False
+    newDateChecker = all(convertDateToEpoch(updateAnAmountBody.date) <= item[0] for item in checkExpenseDate)
+
+    # If its False it means that there is one expense date that is less than the supplied amount date, reject with 403
+    if newDateChecker is False:
+        response.status_code = status.HTTP_403_FORBIDDEN
+        return {"status" : "Date cannot be updated as there is an expense which is older than the provided date."}
+
+
+    # Updates the amount description value, date into the DB for the supplied amount ID
+    queryToUpdateAnAmount = "UPDATE AMOUNTTRACKER SET AMT_EXP_DESC = ?, VALUE = ?, DATE = ? WHERE ID = ?"
+    valuesToUpdateAnAmount = (sanitizedDescription, updateAnAmountBody.amount, convertDateToEpoch(updateAnAmountBody.date), updateAnAmountBody.amountID)
     cur.execute(queryToUpdateAnAmount, valuesToUpdateAnAmount)
     connection.commit()
     return {"amountID" : updateAnAmountBody.amountID, "status" : "Amount updated."}
+
 
 
 # PUT Body to update an expense
@@ -194,6 +215,7 @@ class updateAnExpense(BaseModel):
     expenseID : str
     expenseDescription : str
     expense : float = Field(gt=0, description = "Expense must be greater than 0")
+    date : str 
 
 # Update an expense endpoint
 @app.put("/updateAnExpense")
@@ -202,11 +224,15 @@ def updateAnExpense(updateAnExpenseBody: updateAnExpense, response: Response):
     # Sanitzes the description 
     sanitizedDescription = sanitizeString(updateAnExpenseBody.expenseDescription).strip()
 
-
     # Checks the expense description, if its empty returns a 400
     if len(sanitizedDescription) == 0:
         response.status_code = status.HTTP_400_BAD_REQUEST
         return {"status" : "Expense description cannot be empty."}
+    
+    # Checks the date format, if its incorrect returns a 400
+    if checkDateFormat(updateAnExpenseBody.date) == False:
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return {"status" : updateAnExpenseBody.date + " is not a valid date or is not in DD-MMM-YYYY format, e.g., 05-Aug-2024. Please correct the date."}    
 
     
     # Connects to the DB
@@ -226,7 +252,6 @@ def updateAnExpense(updateAnExpenseBody: updateAnExpense, response: Response):
     # Checks the current amount usage and if its less than the value to be updated
     # We get all the values by the amount ID excluding the value of the expense to be updated and add it into summedUpAmount
     # Then we get the amount and put it into currentAmountCheck
-
     # If the summedUpAmount + supplied expense is greater than the amount value, reject with 403
     # As we cannot update the expense to more than the expense
     queryToCheckAmountUsage = "SELECT VALUE FROM AMOUNTTRACKER WHERE AMT_ID = ? AND ID IS NOT ?"
@@ -242,104 +267,26 @@ def updateAnExpense(updateAnExpenseBody: updateAnExpense, response: Response):
     if summedUpAmount + updateAnExpenseBody.expense > currentAmountCheck[0]:
         response.status_code = status.HTTP_403_FORBIDDEN
         return {"status": "Can only update expense to " + str(currentAmountCheck[0] - summedUpAmount)}
+    
+ 
+    # Get the Amount date of that expense
+    queryToGetAmountDate = "SELECT DATE FROM AMOUNTTRACKER WHERE ID = ?"
+    checkExpenseDate = cur.execute(queryToGetAmountDate, [amountIDCheck[1]]).fetchone()
 
 
-    # Updates the expense description and value into the DB for the supplied expense ID
-    queryToUpdateAnExpense = "UPDATE AMOUNTTRACKER SET AMT_EXP_DESC = ?, VALUE = ? WHERE ID = ?"
-    valuesToUpdateAnExpense = (sanitizedDescription, updateAnExpenseBody.expense, updateAnExpenseBody.expenseID)
+    # If the provided date is less than the amount's expense date, we reject it
+    # Because, the expense date cannot be older than the amount date
+    if convertDateToEpoch(updateAnExpenseBody.date) < checkExpenseDate[0]:
+        response.status_code = status.HTTP_403_FORBIDDEN
+        return {"status" : "Date cannot be updated as provided date is older than amount date."}
+    
+
+    # Updates the expense description, value, date into the DB for the supplied expense ID
+    queryToUpdateAnExpense = "UPDATE AMOUNTTRACKER SET AMT_EXP_DESC = ?, VALUE = ?, DATE =? WHERE ID = ?"
+    valuesToUpdateAnExpense = (sanitizedDescription, updateAnExpenseBody.expense, convertDateToEpoch(updateAnExpenseBody.date), updateAnExpenseBody.expenseID)
     cur.execute(queryToUpdateAnExpense, valuesToUpdateAnExpense)
     connection.commit()
     return {"amountID" : updateAnExpenseBody.expenseID, "status" : "Expense updated."}
-
-
-
-# PUT Body to update the date of an amount or expense
-class updateADate(BaseModel):
-    expOrAmtID : str
-    date : str 
-    type : str
-
-# Update the date of an Amount or Expense endpoint
-@app.put("/updateADate")
-def updateADate(updateADateBody: updateADate, response: Response):
-
-    # Checks the date format, if its incorrect returns a 400
-    if checkDateFormat(updateADateBody.date) == False:
-        response.status_code = status.HTTP_400_BAD_REQUEST
-        return {"status" : updateADateBody.date + " is not a valid date or is not in DD-MMM-YYYY format, e.g., 05-Aug-2024. Please correct the date."}    
-    
-    # Checks if the type is either amt or exp
-    # Reject with 400 if not
-    if updateADateBody.type != "amt" and updateADateBody.type != "exp":
-        response.status_code = status.HTTP_400_BAD_REQUEST
-        return {"status" : "Type must be one of amt or exp"}   
-
-
-    # Connects to the DB
-    connection = sqlite3.connect("AMOUNTTRACKER.db")
-    cur = connection.cursor()
-
-    # Updates the date of an Amount
-    if updateADateBody.type == "amt":
-        queryToCheckAmountDate = "SELECT * FROM AMOUNTTRACKER WHERE TYPE = 'AMT' AND ID = ?"
-        valuesToCheckAmountDate = [updateADateBody.expOrAmtID] 
-        amtDateCheck = cur.execute(queryToCheckAmountDate, valuesToCheckAmountDate).fetchone()
-        
-        # Check if the amount is present in the DB
-        if amtDateCheck is None:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return {"status": "No Amount with ID, " +updateADateBody.expOrAmtID+ " exists, please recheck."}
-        
-        # Check expenses date
-        queryToCheckExpensesDate = "SELECT DATE FROM AMOUNTTRACKER WHERE AMT_ID = ?"
-        checkExpenseDate = cur.execute(queryToCheckExpensesDate, valuesToCheckAmountDate).fetchall()
-        
-        # Check if the supplied date, in Epoch, is less than all the expense dates
-        # As, the amount date must be less than or equal to the expense dates
-        # If the supplied date is less than or equal to all expense dates, return True, else False
-        newDateChecker = all(convertDateToEpoch(updateADateBody.date) <= item[0] for item in checkExpenseDate)
-
-        # If its True, it means that the supplied date is less than or equal all expense dates, so update it
-        # Else, it means that there is one expense date that is less than the supplied amount date, reject with 403
-        if newDateChecker is True:
-            queryToUpdateAmtDate = "UPDATE AMOUNTTRACKER SET DATE = ? WHERE ID = ?"
-            valuesToUpdateAmtDate = (convertDateToEpoch(updateADateBody.date), updateADateBody.expOrAmtID)
-            cur.execute(queryToUpdateAmtDate, valuesToUpdateAmtDate)
-            connection.commit()
-            return {"status" : "Amount date updated."}
-        else: 
-            response.status_code = status.HTTP_403_FORBIDDEN
-            return {"status" : "Date cannot be updated as there is an expense which is older than the provided date."}
-
-
-    # Updates the date of an Expense
-    if updateADateBody.type == "exp":
-        queryToCheckExpenseDate = "SELECT DATE, AMT_ID FROM AMOUNTTRACKER WHERE ID = ? AND TYPE = 'EXP'"
-        valuesToCheckExpenseDate = [updateADateBody.expOrAmtID] 
-        expDateCheck = cur.execute(queryToCheckExpenseDate, valuesToCheckExpenseDate).fetchone()
-
-        
-        # Check if the expense is present in the DB
-        if expDateCheck is None:
-            response.status_code = status.HTTP_404_NOT_FOUND
-            return {"status": "No Expense with ID, " +updateADateBody.expOrAmtID+ " exists, please recheck."}
-        
-        # Get the Amount date of that expense
-        queryToGetAmountDate = "SELECT DATE FROM AMOUNTTRACKER WHERE ID = ?"
-        checkExpenseDate = cur.execute(queryToGetAmountDate, [expDateCheck[1]]).fetchone()
-
-        # If the provided date is greater than or equal to the amount's expense date, we update it
-        # Else, its not updated
-        # Because, the expense date cannot be older than the amount date
-        if convertDateToEpoch(updateADateBody.date) >= checkExpenseDate[0]:
-            queryToUpdateExpDate = "UPDATE AMOUNTTRACKER SET DATE = ? WHERE ID = ?"
-            valuesToUpdateExpDate = (convertDateToEpoch(updateADateBody.date), updateADateBody.expOrAmtID)
-            cur.execute(queryToUpdateExpDate, valuesToUpdateExpDate)
-            connection.commit()
-            return {"status" : "Expense date updated."}
-        else: 
-            response.status_code = status.HTTP_403_FORBIDDEN
-            return {"status" : "Date cannot be updated as provided date is older than amount date."}
 
 
 
