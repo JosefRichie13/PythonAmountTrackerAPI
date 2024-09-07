@@ -4,7 +4,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   </script>
   <style>
-    #doghnut-chart {
+    #chart {
       width: 50%;
       height: 50%;
       margin: 0 auto;
@@ -21,16 +21,21 @@
 </head>
 
 <body>
-  <canvas id="doghnut-chart"></canvas>
+  <canvas id="chart"></canvas>
   <script>
 
     getData();
 
     async function getData() {
+
+      // Make the API call to fetch the JSON response
       const response = await fetch('http://127.0.0.1:8000/getAmountExpenses?amountID=' + '{{amountID}}');
       const data = await response.json();
+
+      // Get the length of the expenses
       length = data.expenseDetails.length;
 
+      // If length is 0, means no expenses, display the below message
       if (length == 0) {
         document.getElementById('noData').innerHTML = "No Chart is displayed as there is no expense for the amount"
       }
@@ -51,17 +56,19 @@
         colors.push(randomColorGenerator());
       }
 
-
+      // Create 3 arrays to hold data
       labels = [];
       values = [];
       dates = [];
 
+      // Loop through the JSON response data and append to the array
       for (point = 0; point < length; point++) {
         labels.push(data.expenseDetails[point].expenseDescription + " (" + data.expenseDetails[point].expenseDate +")");
         values.push(data.expenseDetails[point].expenseValue)
         }
 
-      new Chart(document.getElementById("doghnut-chart"), {
+      // Create a new chart and display
+      new Chart(document.getElementById("chart"), {
         type: '{{chartType}}',
         data: {
           labels: labels,
@@ -78,6 +85,7 @@
     }
 
   </script>
+    <!-- If there is no data, chart won't be displayed, show the message in this tag-->
     <p id="noData"> </p>
 </body>
 

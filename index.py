@@ -131,7 +131,6 @@ def addAnExpense(addAnExpenseBody: addAnExpense, response: Response):
     connection.commit()
     return {"expenseID": generatedIDForExpense, "status": "Expense of " + str(addAnExpenseBody.expense) + " added.", "amountID": addAnExpenseBody.amountID}
 
-##############################################################
 
 # PUT Body to update an amount
 # The amount is validated to be greater than 0
