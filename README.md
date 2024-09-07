@@ -13,6 +13,8 @@ The below REST API endpoints are exposed
 * GET /getAmountExpenses -- Returns all the expense details of an amount
   
 * GET /getAmountExpensesChart -- Returns all the expense details of an amount as a Chart
+
+* GET /getAmountStatus -- Returns all the available amounts by their status, i.e. finished or remaining
   
 * POST /addAnAmount -- Adds an Amount
   
