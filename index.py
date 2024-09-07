@@ -402,6 +402,59 @@ def getAmountExpensesChart(amountID: str, chartType: str, request: Request, resp
     return templates.TemplateResponse(request=request, name="amountExpenses.html", context={"amountID": amtCheck[0], "amtDesc": amtCheck[1], "chartType": chartType})
 
 
+
+# Gets all the amounts with their status, finished or remaining
+@app.get("/getAmountStatus")
+def getAmountByStatus(response: Response):
+
+    # Connects to the DB
+    connection = sqlite3.connect("AMOUNTTRACKER.db")
+    cur = connection.cursor()
+
+    # Query to get the ID all the Amounts
+    queryToGetAmtDetails = "SELECT ID FROM AMOUNTTRACKER WHERE TYPE = 'AMT'"
+    amtCheck = cur.execute(queryToGetAmtDetails).fetchall()
+
+    # Check if the amount is present in the DB
+    if amtCheck is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return {"status": "No Amount exists, please create one to get started."}
+    
+
+    # Create an empty list, formattedAmount, to hold the final data
+    formattedAmount = []
+
+    # For each Amount ID, get the Value (1st query) and get the expense values (2nd query)
+    # Add all the expense values in summedUpExpenses
+    # If Value and summedUpExpenses are the same, means the amount is completed, get the ID, Description and Value for that ID and append to the list
+    # If Value and summedUpExpenses are not same, means the amount is not finished, get the ID, Description, Value, remaining amount for that ID and append to the list
+    index = 0
+    while index < len(amtCheck):
+        queryToGetValueOfAmount = "SELECT VALUE FROM AMOUNTTRACKER WHERE ID = ?"
+        valuesToGetValueOfAmount = amtCheck[index]
+        amountValue = cur.execute(queryToGetValueOfAmount, valuesToGetValueOfAmount).fetchone()
+
+        queryToGetExpenseDetails = "SELECT VALUE FROM AMOUNTTRACKER WHERE AMT_ID = ?"
+        expenseValue = cur.execute(queryToGetExpenseDetails, valuesToGetValueOfAmount).fetchall()
+    
+        summedUpExpenses =  sum(item[0] for item in expenseValue)
+
+        queryToDisplayData = "SELECT ID, AMT_EXP_DESC, VALUE FROM AMOUNTTRACKER WHERE ID = ?"
+        returnData = cur.execute(queryToDisplayData, valuesToGetValueOfAmount).fetchone()
+
+        if amountValue[0] == summedUpExpenses:
+            formattedAmount.append({"amountID": returnData[0], "amountDescription": returnData[1], "amountValue": returnData[2], "amountStatus" : "finished"})
+
+        if amountValue[0] != summedUpExpenses:
+            formattedAmount.append({"amountID": returnData[0], "amountDescription": returnData[1], "amountValue": returnData[2], "amountStatus" : "remaining", "remainingAmount" : amountValue[0] - summedUpExpenses})
+
+        index += 1
+
+    # Return the list
+    return {"amountDetails": formattedAmount}
+
+
+
 # Deletes an amount from the DB, when an amount is deleted all its expenses are also deleted
 # Requires amountID to be sent as a Query param
 @app.delete("/deleteAmount")
