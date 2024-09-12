@@ -1,0 +1,37 @@
+<h1 id="iss-tracking-app-using-fastapi-leaflet-and-python">ISS Tracking App using FastAPI, Leaflet and Python</h1>
+<p>This repo has the code for a ISS Tracking App.</p>
+<p>The below REST API endpoints are exposed</p>
+<ul>
+<li><p>GET /getISSCoordinates -- Returns the last 10 locations of the ISS</p>
+<blockquote>
+<p>Sample returned body is</p>
+<pre><code>[
+ {
+   &quot;latitude&quot;: 45.740046548685,
+   &quot;longitude&quot;: -174.15209378684,
+   &quot;timestamp&quot;: &quot;12-Sep-2024 18:13:53 IST&quot;,
+   &quot;altitude&quot;: 427.74,
+   &quot;velocity&quot;: 27571.55,
+   &quot;sunLatitude&quot;: 3.8632350424651,
+   &quot;sunLongitude&quot;: 348.05265392438
+ }
+]
+</code></pre>
+</blockquote>
+</li>
+<li><p>GET /showISSMap -- Displays the last 10 locations of the ISS on a Leaflet map</p>
+<p>Sample map <br><br>
+<img src="Map.png" alt="Map.png"></p>
+<p>Sample map with ISS markers <br><br>
+<img src="ISSTracking.png" alt="ISSTracking.png"></p>
+<p>Sample map with Sun markers <br><br>
+<img src="SunTracking.png" alt="SunTracking.png"></p>
+</li>
+</ul>
+<p>To run it in Dev mode, use the FastAPI run command</p>
+<pre><code class="language-console">fastapi dev .\index.py
+</code></pre>
+<p>Once the app is started locally, the below URL&#39;s will be available </p>
+<pre><code>API Endpoint URL : http://127.0.0.1:8000 
+Generated API Docs URL : http://127.0.0.1:8000/docs
+</code></pre>
